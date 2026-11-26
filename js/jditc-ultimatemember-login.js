@@ -171,13 +171,42 @@
 			}
 		}
 
+		function sanitizeNotice(message) {
+			var noticeMessage = typeof message === 'string' ? message : '';
+			var purifier      = window['DOMPurify'];
+			var fallback      = document.createDocumentFragment();
+
+			fallback.textContent = noticeMessage;
+			if (!purifier || typeof purifier.sanitize !== 'function' || purifier.isSupported === false) {
+				return fallback;
+			}
+
+			try {
+				var sanitizedContent = purifier.sanitize(
+					noticeMessage.replace(/\r\n?|\n/g, '<br>'),
+					{
+						ALLOWED_TAGS: [ 'a', 'br', 'em', 'strong' ],
+						ALLOWED_ATTR: [ 'href' ],
+						ALLOW_DATA_ATTR: false,
+						ALLOW_ARIA_ATTR: false,
+						ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/)|#|(?:\.\.?\/)|(?:[^\s:/?#]+(?:[/?#]|$)))/i,
+						RETURN_DOM_FRAGMENT: true
+					}
+				);
+				return sanitizedContent && sanitizedContent.nodeType === Node.DOCUMENT_FRAGMENT_NODE ? sanitizedContent : fallback;
+			} catch (error) {
+				return fallback;
+			}
+		}
+
 		function showPreflightNotice(message, isError) {
 			clearPreflightNotice();
 
 			var notice = document.createElement('p');
 			notice.className = isError ? 'um-notice err' : 'um-notice warning';
 			notice.setAttribute('data-jditc-preflight-notice', '1');
-			notice.innerHTML = message;
+			notice.style.whiteSpace = 'pre-line';
+			notice.appendChild(sanitizeNotice(message));
 
 			var firstField = form.querySelector('.um-field');
 			if (firstField) {

@@ -3,6 +3,7 @@
 * New features:
   * Improved compatibility with the "Simple CAPTCHA with Cloudflare Turnstile" plugin, including security checks for password, 2FA, and passkey logins.
 * Bug fixes:
+  * Sanitize Wordfence preflight notices before rendering their limited formatting and links.
   * Display authentication errors and return to the login fields when the Wordfence preflight fails.
   * Prevent duplicate login submissions while the preflight or security check is in progress.
   * Prompt users to refresh an expired Turnstile security check during 2FA.

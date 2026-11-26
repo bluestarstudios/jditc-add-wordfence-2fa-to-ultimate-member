@@ -274,18 +274,28 @@ class UltimateMember {
 	}
 
 	/**
-	 * Enqueue the login form script that toggles Wordfence 2FA UI behavior.
+	 * Enqueue the required DOMPurify dependency and the login form script that toggles Wordfence 2FA UI behavior.
 	 */
 	private function enqueue_wordfence_2fa_script() {
 		$handle               = 'jditc-w2fa-um-login';
 		$script_relative_path = 'js/jditc-ultimatemember-login.js';
 		$script_absolute_path = trailingslashit( \JDITC_W2FA_UM_PATH ) . $script_relative_path;
-		$script_version       = file_exists( $script_absolute_path ) ? (string) filemtime( $script_absolute_path ) : '1.0';
+		$dompurify_handle     = 'jditc-w2fa-dompurify';
+
+		wp_enqueue_script(
+			$dompurify_handle,
+			trailingslashit( \JDITC_W2FA_UM_URL ) . 'js/vendor/dompurify/purify.min.js',
+			array(),
+			'3.5.0',
+			true
+		);
+
+		$script_version = file_exists( $script_absolute_path ) ? (string) filemtime( $script_absolute_path ) : '1.0';
 
 		wp_enqueue_script(
 			$handle,
 			trailingslashit( \JDITC_W2FA_UM_URL ) . $script_relative_path,
-			array(),
+			array( $dompurify_handle ),
 			$script_version,
 			true
 		);
