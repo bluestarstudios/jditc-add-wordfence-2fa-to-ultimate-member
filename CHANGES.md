@@ -2,6 +2,7 @@
 
 * New features:
 * Bug fixes:
+  * Preserved Wordfence passkey error messages.
 * Under the hood:
 
 #### 1.1.2 / 2026-08-12
