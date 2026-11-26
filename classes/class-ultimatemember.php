@@ -123,9 +123,23 @@ class UltimateMember {
 		$show_immediately      = is_string( $posted_token_value ) && '' !== $posted_token_value;
 		$remember_selected     = is_string( $posted_remember_value ) && '' !== $posted_remember_value;
 		$disabled_attr         = $show_immediately ? '' : 'disabled';
+
+		/**
+		 * Filters whether JDITC may continue when Turnstile returns the same token after a widget reset.
+		 *
+		 * JDITC normally requires a new token because the preflight request may have consumed the previous one.
+		 * Return true only for a controlled integration whose server-side verification explicitly accepts that repeated
+		 * token after a reset, such as a documented test service. This filter does not skip server-side verification
+		 * or make an already-spent live token valid.
+		 *
+		 * @param bool $allow_reused_turnstile_token Whether JDITC may accept the same token after a widget reset.
+		 */
+		$allow_reused_turnstile_token = (bool) apply_filters( 'jditc_w2fa_allow_reused_turnstile_token', false );
+		$reused_turnstile_token_data  = $allow_reused_turnstile_token ? '1' : '0';
+
 		$this->enqueue_wordfence_2fa_script();
 		?>
-		<div id="<?php echo esc_attr( $container_id ); ?>" class="um-field" data-key="wfls-token" data-jditc-w2fa="1" data-jditc-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+		<div id="<?php echo esc_attr( $container_id ); ?>" class="um-field" data-key="wfls-token" data-jditc-w2fa="1" data-jditc-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-jditc-reused-turnstile-token="<?php echo esc_attr( $reused_turnstile_token_data ); ?>"
 		<?php
 		if ( ! $show_immediately ) :
 			?>
@@ -186,12 +200,16 @@ class UltimateMember {
 
 		// Wordfence's unauthenticated passkey endpoint validates its own WebAuthn token.
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
-		$token      = isset( $_POST['token'] ) && is_string( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
-		$credential = isset( $_POST['credential'] ) ? map_deep( wp_unslash( $_POST['credential'] ), 'sanitize_text_field' ) : null;
-		$remember   = ! empty( $_POST['rememberme'] );
+		$token = isset( $_POST['token'] ) && is_string( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
+		if ( isset( $_POST['credential'] ) && is_string( $_POST['credential'] ) ) {
+			$credential = json_decode( wp_unslash( $_POST['credential'] ), true );
+		} else {
+			$credential = isset( $_POST['credential'] ) && is_array( $_POST['credential'] ) ? wp_unslash( $_POST['credential'] ) : null;
+		}
+		$remember = ! empty( $_POST['rememberme'] );
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
-		if ( is_string( $credential ) ) {
-			$credential = json_decode( $credential, true );
+		if ( is_array( $credential ) ) {
+			$credential = map_deep( $credential, 'sanitize_text_field' );
 		}
 
 		$controller = '\\WordfenceLS\\Controller_Passkey';
@@ -288,12 +306,27 @@ class UltimateMember {
 	 * @return bool
 	 */
 	private function passkey_api_available() {
-		$controller = '\\WordfenceLS\\Controller_Passkey';
-		return $this->is_wordfence_login_security_available()
+		$controller    = '\\WordfenceLS\\Controller_Passkey';
+		$api_available = $this->is_wordfence_login_security_available()
 			&& class_exists( $controller )
 			&& method_exists( $controller, 'shared' )
 			&& method_exists( $controller::shared(), 'begin_login' )
 			&& method_exists( $controller::shared(), 'finish_and_authenticate_login' );
+
+		if ( ! $api_available ) {
+			return false;
+		}
+
+		// Check if passkeys are enabled in Wordfence settings.
+		$settings_controller = '\\WordfenceLS\\Controller_Settings';
+		if ( class_exists( $settings_controller ) && method_exists( $settings_controller, 'shared' ) ) {
+			$settings = $settings_controller::shared();
+			if ( method_exists( $settings, 'are_passkeys_enabled' ) && ! $settings->are_passkeys_enabled() ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
