@@ -9,6 +9,7 @@
   * Prompt users to refresh an expired Turnstile security check during 2FA.
 * Under the hood:
   * Added the `jditc_w2fa_allow_reused_turnstile_token` filter for controlled test integrations. It is disabled by default.
+  * Build and track the bundled DOMPurify browser asset through npm and Dependabot.
   * Fixed an issue with how passkey credentials are processed to prevent potential data loss.
 
 #### 1.1.3 / 2026-11-11

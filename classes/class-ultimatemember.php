@@ -274,19 +274,31 @@ class UltimateMember {
 	}
 
 	/**
-	 * Enqueue the required DOMPurify dependency and the login form script that toggles Wordfence 2FA UI behavior.
+	 * Enqueue the appropriate DOMPurify build and the login form script that toggles Wordfence 2FA UI behavior.
 	 */
 	private function enqueue_wordfence_2fa_script() {
-		$handle               = 'jditc-w2fa-um-login';
-		$script_relative_path = 'js/jditc-ultimatemember-login.js';
-		$script_absolute_path = trailingslashit( \JDITC_W2FA_UM_PATH ) . $script_relative_path;
-		$dompurify_handle     = 'jditc-w2fa-dompurify';
+		$handle                  = 'jditc-w2fa-um-login';
+		$min                     = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$dompurify_relative_path = 'js/vendor/dompurify/purify' . $min . '.js';
+		$script_relative_path    = 'js/jditc-ultimatemember-login.js';
+		$script_absolute_path    = trailingslashit( \JDITC_W2FA_UM_PATH ) . $script_relative_path;
+		$dompurify_handle        = 'jditc-w2fa-dompurify';
+		$dompurify_version_file  = trailingslashit( \JDITC_W2FA_UM_PATH ) . 'js/vendor/dompurify/version.php';
+		$dompurify_version       = '1.0';
+
+		if ( file_exists( $dompurify_version_file ) ) {
+			$dompurify_version = require $dompurify_version_file;
+		}
+
+		if ( ! is_string( $dompurify_version ) || '' === $dompurify_version ) {
+			$dompurify_version = '1.0';
+		}
 
 		wp_enqueue_script(
 			$dompurify_handle,
-			trailingslashit( \JDITC_W2FA_UM_URL ) . 'js/vendor/dompurify/purify.min.js',
+			trailingslashit( \JDITC_W2FA_UM_URL ) . $dompurify_relative_path,
 			array(),
-			'3.5.0',
+			$dompurify_version,
 			true
 		);
 
